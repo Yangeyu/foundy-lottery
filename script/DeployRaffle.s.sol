@@ -9,8 +9,11 @@ import "./Interactions.s.sol";
 
 contract DeployRaffle is Script {
     function run() public returns (Raffle, HelperConfig) {
+        AddConsumer addConsumer = new AddConsumer();
         HelperConfig helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
+
+
         if (config.subscriptionId == 0) {
           CreateSubscription createSubscription = new CreateSubscription();
           (config.subscriptionId, config.vrfCoordinatorV2_5)
@@ -30,6 +33,7 @@ contract DeployRaffle is Script {
             config.vrfCoordinatorV2_5
         );
         vm.stopBroadcast();
+        addConsumer.addConsumer(address(raffle), config.vrfCoordinatorV2_5, config.subscriptionId, config.account);
         return (raffle, helperConfig);
     }
 }
