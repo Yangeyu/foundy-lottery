@@ -107,6 +107,6 @@ contract HelperConfig is CodeConstants, Script {
     }
 
     function setConfig(uint256 chainid, NetworkConfig memory config) public {
-      networkConfigs[chainid] = config;
+        networkConfigs[chainid] = config;
     }
 }

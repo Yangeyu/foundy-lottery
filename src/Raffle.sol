@@ -39,6 +39,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      * Events
      */
     event RaffleEnter(address indexed player);
+    event RequestedRaffleWinner(uint256 indexed requestId);
     event WinnerPicked(address indexed player);
 
     constructor(
@@ -70,7 +71,8 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         bool timePassed = block.timestamp - s_lastRaffleTime >= i_interval;
         bool hasPlayers = s_players.length > 0;
         bool isOpen = s_raffleState == RaffleState.OPEN;
-        bool upkeepNeeded = timePassed && hasPlayers && isOpen;
+        bool hasBalance = address(this).balance > 0;
+        bool upkeepNeeded = timePassed && hasPlayers && isOpen && hasBalance;
         return (upkeepNeeded, "");
     }
 
@@ -81,7 +83,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         }
 
         s_raffleState = RaffleState.CALCULATING;
-        VRFV2PlusClient.RandomWordsRequest memory requestId = VRFV2PlusClient.RandomWordsRequest({
+        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
             keyHash: i_keyHash,
             subId: i_subscriptionId,
             requestConfirmations: REQUEST_CONFIRMATIONS,
@@ -90,7 +92,9 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
             extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
         });
 
-        s_vrfCoordinator.requestRandomWords(requestId);
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
+
+        emit RequestedRaffleWinner(requestId);
     }
 
     function fulfillRandomWords(uint256, uint256[] calldata randomWords) internal override {
@@ -111,8 +115,8 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         return s_recenWinner;
     }
 
-    function getPlayers() public view returns (address payable[] memory) {
-        return s_players;
+    function getPlayer(uint256 index) public view returns (address payable) {
+        return s_players[index];
     }
 
     function getRaffleState() public view returns (RaffleState) {
