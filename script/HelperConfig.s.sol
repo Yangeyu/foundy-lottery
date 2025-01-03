@@ -55,13 +55,13 @@ contract HelperConfig is CodeConstants, Script {
 
     function getSepolliaConfig() public pure returns (NetworkConfig memory config) {
         config = NetworkConfig({
-            subscriptionId: 0,
+            subscriptionId: 55998148461248011506854254673314944551490474464130234060746653510421973146634,
             keyHash: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
             automationUpdateInterval: 30,
             raffleEntranceFee: 0.001 ether,
             vrfCoordinatorV2_5: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
             link: 0x779877A7B0D9E8603169DdbD7836e478b4624789,
-            account: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+            account: 0x8831948bB609E35F0475F5796047d611DE896F06
         });
     }
 

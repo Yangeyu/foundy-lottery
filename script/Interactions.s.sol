@@ -49,7 +49,7 @@ contract FundSubscription is CodeConstants, Script {
         console.log("Funding subscription with accout: ", account);
 
         if (block.chainid == LOCAL_CHAIN_ID) {
-            vm.startBroadcast();
+            vm.startBroadcast(account);
             VRFCoordinatorV2_5Mock(vrfCoordinatorV2_5).fundSubscription(subId, FUND_AMOUNT);
             vm.stopBroadcast();
         } else {
@@ -84,7 +84,7 @@ contract AddConsumer is Script {
       console.log("Adding consumer to: ", mostRecentlyDeployed);
       console.log("Adding consumer on chainId: ", block.chainid);
       console.log("Adding consumer with accout: ", account);
-      vm.startBroadcast();
+      vm.startBroadcast(account);
       VRFCoordinatorV2_5Mock(vrfCoordinatorV2_5).addConsumer(subId, mostRecentlyDeployed);
       vm.stopBroadcast();
       console.log("Consumer added successfully");
