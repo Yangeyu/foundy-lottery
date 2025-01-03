@@ -25,6 +25,14 @@ contract RaffleTest is Test, CodeConstants {
     bytes32 keyHash;
     LinkToken link;
 
+    modifier raffleEntrance() {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: raffleEntranceFee}();
+        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        vm.roll(1);
+        _;
+    }
+
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
         (raffle, helperConfig) = deployer.run();
@@ -39,13 +47,13 @@ contract RaffleTest is Test, CodeConstants {
         vrfCoordinatorV2_5 = config.vrfCoordinatorV2_5;
         link = LinkToken(config.link);
 
-        // vm.startPrank(msg.sender);
-        // if (block.chainid == LOCAL_CHAIN_ID) {
-        //     link.mint(msg.sender, LINK_BALANCE);
-        //     VRFCoordinatorV2_5Mock(vrfCoordinatorV2_5).fundSubscription(subscriptionId, LINK_BALANCE);
-        // }
-        // link.approve(vrfCoordinatorV2_5, LINK_BALANCE);
-        // vm.stopPrank();
+        vm.startPrank(msg.sender);
+        if (block.chainid == LOCAL_CHAIN_ID) {
+            link.mint(msg.sender, LINK_BALANCE);
+            VRFCoordinatorV2_5Mock(vrfCoordinatorV2_5).fundSubscription(subscriptionId, LINK_BALANCE);
+        }
+        link.approve(vrfCoordinatorV2_5, LINK_BALANCE);
+        vm.stopPrank();
     }
 
     function testRaffleInitializesInOpenState() public view {
@@ -65,9 +73,8 @@ contract RaffleTest is Test, CodeConstants {
         assert(player == PLAYER);
     }
 
-    function testRaffleStateChangesToCalculating() public {
-        vm.prank(PLAYER);
-        raffle.enterRaffle{value: raffleEntranceFee}();
+    function testRaffleStateChangesToCalculating() public raffleEntrance {
+        raffle.performUpkeep("");
         assert(raffle.getRaffleState() == Raffle.RaffleState.CALCULATING);
     }
 
@@ -187,5 +194,38 @@ contract RaffleTest is Test, CodeConstants {
         // Assert
         assert(entries[1].topics[0] == keccak256("RequestedRaffleWinner(uint256)"));
         assert(entries[1].topics[1] != 0);
+    }
+
+    // ========  FULFILLUPKEEP  ========
+    function testFulfillRandomWordsSuccess() public raffleEntrance {
+        address expectWinner = address(1);
+        uint256 startIndex = 1;
+        uint256 additionalEntraces = 3;
+        
+        // Arrange
+        for (uint256 i = startIndex; i < startIndex + additionalEntraces; ++i) {
+            address player = address(uint160(i));
+            hoax(player, 1 ether);
+            raffle.enterRaffle{value: raffleEntranceFee}();
+        }
+
+        uint256 startTimestamp = raffle.getLastRaffleTime();
+        uint256 expectWinnerBalance = expectWinner.balance;
+
+        // Act
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+        
+        VRFCoordinatorV2_5Mock(vrfCoordinatorV2_5).fulfillRandomWords(uint256(requestId), address(raffle));
+
+        // Assert
+        address winner = raffle.getRecenWinner();
+        uint256 lastRaffleTime = raffle.getLastRaffleTime(); 
+
+        assert(winner == expectWinner);
+        assert(lastRaffleTime > startTimestamp);
+        assert(expectWinner.balance == (additionalEntraces + 1) * raffleEntranceFee + expectWinnerBalance);
     }
 }
