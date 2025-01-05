@@ -39,8 +39,8 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      * Events
      */
     event RaffleEnter(address indexed player);
-    event RequestedRaffleWinner(uint256 indexed requestId);
     event WinnerPicked(address indexed player);
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
     constructor(
         uint256 subscriptionId,
@@ -71,8 +71,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         bool timePassed = block.timestamp - s_lastRaffleTime >= i_interval;
         bool hasPlayers = s_players.length > 0;
         bool isOpen = s_raffleState == RaffleState.OPEN;
-        bool hasBalance = address(this).balance > 0;
-        bool upkeepNeeded = timePassed && hasPlayers && isOpen && hasBalance;
+        bool upkeepNeeded = timePassed && hasPlayers && isOpen;
         return (upkeepNeeded, "");
     }
 
@@ -93,7 +92,6 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         });
 
         uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
-
         emit RequestedRaffleWinner(requestId);
     }
 
@@ -104,6 +102,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         s_recenWinner = winner;
         s_players = new address payable[](0);
         s_lastRaffleTime = block.timestamp;
+        s_raffleState = RaffleState.OPEN;
         (bool success,) = winner.call{value: address(this).balance}("");
         if (!success) {
             revert Raffle_TransferFailed();
@@ -111,11 +110,11 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         emit WinnerPicked(winner);
     }
 
-    function getRecenWinner() public view returns (address) {
+    function getRecentWinner() public view returns (address) {
         return s_recenWinner;
     }
 
-    function getPlayer(uint256 index) public view returns (address payable) {
+    function getPlayer(uint256 index) public view returns (address) {
         return s_players[index];
     }
 
@@ -123,7 +122,11 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         return s_raffleState;
     }
 
-    function getLastRaffleTime() public view returns (uint256) {
+    function getLastTimeStamp() public view returns (uint256) {
         return s_lastRaffleTime;
+    }
+
+    function getPlayersLength() public view returns (uint256) {
+        return s_players.length;
     }
 }

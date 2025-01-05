@@ -201,34 +201,42 @@ contract RaffleTest is Test, CodeConstants {
 
     // ========  FULFILLUPKEEP  ========
     function testFulfillRandomWordsSuccess() public raffleEntrance {
-        address expectWinner = address(1);
-        uint256 startIndex = 1;
-        uint256 additionalEntraces = 3;
-        
+        address expectedWinner = address(1);
+
         // Arrange
-        for (uint256 i = startIndex; i < startIndex + additionalEntraces; ++i) {
+        uint256 additionalEntrances = 3;
+        uint256 startingIndex = 1; // We have starting index be 1 so we can start with address(1) and not address(0)
+
+        for (uint256 i = startingIndex; i < startingIndex + additionalEntrances; i++) {
             address player = address(uint160(i));
-            hoax(player, 1 ether);
+            hoax(player, 1 ether); // deal 1 eth to the player
             raffle.enterRaffle{value: raffleEntranceFee}();
         }
 
-        uint256 startTimestamp = raffle.getLastRaffleTime();
-        uint256 expectWinnerBalance = expectWinner.balance;
+        uint256 startingTimeStamp = raffle.getLastTimeStamp();
+        uint256 startingBalance = expectedWinner.balance;
 
         // Act
         vm.recordLogs();
-        raffle.performUpkeep("");
+        raffle.performUpkeep(""); // emits requestId
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        bytes32 requestId = entries[1].topics[1];
-        
+        console.logBytes32(entries[1].topics[1]);
+        bytes32 requestId = entries[1].topics[1]; // get the requestId from the logs
+
         VRFCoordinatorV2_5Mock(vrfCoordinatorV2_5).fulfillRandomWords(uint256(requestId), address(raffle));
 
         // Assert
-        address winner = raffle.getRecenWinner();
-        uint256 lastRaffleTime = raffle.getLastRaffleTime(); 
+        address recentWinner = raffle.getRecentWinner();
+        Raffle.RaffleState raffleState = raffle.getRaffleState();
+        uint256 winnerBalance = recentWinner.balance;
+        uint256 endingTimeStamp = raffle.getLastTimeStamp();
+        uint256 prize = raffleEntranceFee * (additionalEntrances + 1);
+        uint256 playersLength = raffle.getPlayersLength();
 
-        assert(winner == expectWinner);
-        assert(lastRaffleTime > startTimestamp);
-        assert(expectWinner.balance == (additionalEntraces + 1) * raffleEntranceFee + expectWinnerBalance);
+        assert(recentWinner == expectedWinner);
+        assert(winnerBalance == startingBalance + prize);
+        assert(raffleState == Raffle.RaffleState.OPEN);
+        assert(endingTimeStamp > startingTimeStamp);
+        assert(playersLength == 0);
     }
 }
